@@ -1,0 +1,332 @@
+From 48f9a0107e8f83654a28f2f327f699dcb065b136 Mon Sep 17 00:00:00 2001
+From: Ziyi Xu <ziyixu@ZiyideMacBook-Air-2.local>
+Date: Tue, 15 Sep 2026 16:05:14 -0700
+Subject: [PATCH] Add rental completion and support panel
+
+---
+ src/App.jsx                           |  60 +++++++++++
+ src/components/ChargeMachineStory.jsx |  26 ++++-
+ src/styles.css                        | 148 ++++++++++++++++++++++++++
+ 3 files changed, 233 insertions(+), 1 deletion(-)
+
+diff --git a/src/App.jsx b/src/App.jsx
+index b09f835..9e3b500 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -2,10 +2,15 @@ import {
+   ArrowDown,
+   ArrowRight,
+   BatteryCharging,
++  ChevronDown,
++  CircleHelp,
+   MapPin,
++  Phone,
+   Sparkles,
++  X,
+   Zap,
+ } from "lucide-react";
++import { useState } from "react";
+ import ChargeMachineStory from "./components/ChargeMachineStory";
+ import StationLocator from "./components/StationLocator";
+ 
+@@ -21,6 +26,8 @@ function Brand() {
+ }
+ 
+ export default function App() {
++  const [supportOpen, setSupportOpen] = useState(false);
++
+   return (
+     <main>
+       <header className="site-header">
+@@ -98,6 +105,59 @@ export default function App() {
+       </section>
+       <ChargeMachineStory />
+       <StationLocator />
++
++      <button
++        aria-controls="charge-support"
++        aria-expanded={supportOpen}
++        className="support-fab"
++        onClick={() => setSupportOpen(true)}
++        type="button"
++      >
++        <CircleHelp size={19} /> Need help?
++      </button>
++
++      {supportOpen && (
++        <aside className="support-panel" id="charge-support" aria-label="Charge support">
++          <div className="support-panel-heading">
++            <div>
++              <p className="kicker">Charge support</p>
++              <h2>Here to keep you moving.</h2>
++            </div>
++            <button
++              aria-label="Close support panel"
++              className="icon-button"
++              onClick={() => setSupportOpen(false)}
++              type="button"
++            >
++              <X size={19} />
++            </button>
++          </div>
++          <p className="support-intro">
++            The UW pilot is still being planned. These are the answers we want
++            every Charge rider to have before launch.
++          </p>
++          <details open>
++            <summary>How do I rent a Charge bank? <ChevronDown size={17} /></summary>
++            <p>Walk up to a station, tap to start a rental, then take the bank that releases.</p>
++          </details>
++          <details>
++            <summary>Where can I return it? <ChevronDown size={17} /></summary>
++            <p>Return it to any Charge station. The planned UW locations are shown on the station map.</p>
++          </details>
++          <details>
++            <summary>What if a bank does not release? <ChevronDown size={17} /></summary>
++            <p>Do not pull on the station. Use the support contact listed at the station and keep your rental confirmation nearby.</p>
++          </details>
++          <a className="support-contact" href="tel:+12066818702">
++            <Phone size={18} />
++            <div>
++              <strong>Call Charge UW Support</strong>
++              <span>(206) 681-8702 · UW pilot questions and station help</span>
++            </div>
++            <ArrowRight size={18} />
++          </a>
++        </aside>
++      )}
+     </main>
+   );
+ }
+diff --git a/src/components/ChargeMachineStory.jsx b/src/components/ChargeMachineStory.jsx
+index e643637..589574a 100644
+--- a/src/components/ChargeMachineStory.jsx
++++ b/src/components/ChargeMachineStory.jsx
+@@ -1,5 +1,5 @@
+ import { useEffect, useRef, useState } from "react";
+-import { Check, CreditCard, LoaderCircle } from "lucide-react";
++import { Check, CreditCard, LoaderCircle, MapPin, X } from "lucide-react";
+ 
+ const scenes = [
+   {
+@@ -29,6 +29,7 @@ const clamp = (value) => Math.min(1, Math.max(0, value));
+ export default function ChargeMachineStory() {
+   const sectionRef = useRef(null);
+   const [progress, setProgress] = useState(0);
++  const [completionDismissed, setCompletionDismissed] = useState(false);
+ 
+   useEffect(() => {
+     let ticking = false;
+@@ -64,6 +65,7 @@ export default function ChargeMachineStory() {
+     "--load-progress": clamp((progress - 0.45) / 0.18),
+     "--bank-progress": clamp((progress - 0.68) / 0.22),
+   };
++  const showCompletion = progress > 0.83 && !completionDismissed;
+ 
+   return (
+     <section
+@@ -131,6 +133,28 @@ export default function ChargeMachineStory() {
+             <span className="release-flash" />
+           </div>
+         </div>
++        {showCompletion && (
++          <section className="rental-ready-card" aria-label="Demo rental ready">
++            <button
++              aria-label="Dismiss rental ready message"
++              className="rental-ready-close"
++              onClick={() => setCompletionDismissed(true)}
++              type="button"
++            >
++              <X size={16} />
++            </button>
++            <span className="rental-ready-icon"><Check size={18} /></span>
++            <div>
++              <p className="kicker">Ready to go</p>
++              <h3>Your Charge bank is ready.</h3>
++              <p>Grab it, power up, and return it to any Charge station when you’re done.</p>
++            </div>
++            <a href="#stations" onClick={() => setCompletionDismissed(true)}>
++              <MapPin size={15} /> Find return stations
++            </a>
++            <small>Demo experience — no rental started.</small>
++          </section>
++        )}
+       </div>
+     </section>
+   );
+diff --git a/src/styles.css b/src/styles.css
+index 4dabb11..4e523eb 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -546,6 +546,142 @@ em {
+   top: 15px;
+   left: 50%;
+ }
++.rental-ready-card {
++  z-index: 20;
++  color: #f8f6ef;
++  background: #12130ff2;
++  border: 1px solid #d7ff3f75;
++  border-radius: 20px;
++  width: min(360px, calc(100vw - 40px));
++  padding: 20px;
++  position: absolute;
++  right: 5vw;
++  bottom: 7vh;
++  box-shadow: 0 24px 65px #12130f66;
++  animation: rental-ready-in 340ms cubic-bezier(.2,.8,.2,1) both;
++}
++.rental-ready-icon {
++  color: var(--ink);
++  background: var(--lime);
++  border-radius: 50%;
++  place-items: center;
++  width: 36px;
++  height: 36px;
++  margin-bottom: 14px;
++  display: grid;
++}
++.rental-ready-card .kicker {
++  color: var(--lime);
++  margin-bottom: 7px;
++}
++.rental-ready-card h3 {
++  letter-spacing: -0.045em;
++  margin: 0 0 9px;
++  font-size: 26px;
++  line-height: 0.98;
++}
++.rental-ready-card p:not(.kicker) {
++  color: #e7e7dd;
++  margin: 0;
++  font-size: 13px;
++  line-height: 1.5;
++}
++.rental-ready-card a {
++  color: var(--ink);
++  background: var(--lime);
++  border-radius: 999px;
++  align-items: center;
++  gap: 6px;
++  width: fit-content;
++  margin-top: 16px;
++  padding: 11px 13px;
++  font-size: 11px;
++  font-weight: 900;
++  display: flex;
++}
++.rental-ready-card small {
++  color: #a8aaa0;
++  margin-top: 13px;
++  font-size: 9px;
++  display: block;
++}
++.rental-ready-close,
++.icon-button {
++  color: inherit;
++  background: transparent;
++  border: 0;
++  border-radius: 50%;
++  place-items: center;
++  width: 34px;
++  height: 34px;
++  padding: 0;
++  display: grid;
++  cursor: pointer;
++}
++.rental-ready-close {
++  color: #f8f6ef;
++  position: absolute;
++  top: 10px;
++  right: 10px;
++}
++@keyframes rental-ready-in {
++  from { opacity: 0; transform: translateY(18px) scale(.96); }
++  to { opacity: 1; transform: translateY(0) scale(1); }
++}
++.support-fab {
++  z-index: 30;
++  color: #f8f6ef;
++  background: var(--ink);
++  border: 1px solid #ffffff2e;
++  border-radius: 999px;
++  align-items: center;
++  gap: 8px;
++  padding: 13px 17px;
++  font: inherit;
++  font-size: 12px;
++  font-weight: 900;
++  display: flex;
++  position: fixed;
++  right: 22px;
++  bottom: 22px;
++  box-shadow: 0 12px 28px #12130f45;
++  cursor: pointer;
++}
++.support-fab:hover { background: #2a2b25; }
++.support-panel {
++  z-index: 40;
++  color: #f8f6ef;
++  background: #12130f;
++  border: 1px solid #ffffff24;
++  border-radius: 22px;
++  width: min(440px, calc(100vw - 32px));
++  padding: 24px;
++  position: fixed;
++  right: 16px;
++  bottom: 16px;
++  box-shadow: 0 28px 80px #12130f80;
++  animation: rental-ready-in 240ms ease-out both;
++}
++.support-panel-heading {
++  justify-content: space-between;
++  align-items: start;
++  gap: 16px;
++  display: flex;
++}
++.support-panel .kicker { color: var(--lime); margin-bottom: 8px; }
++.support-panel h2 { letter-spacing: -0.05em; margin: 0; font-size: 31px; line-height: 1; }
++.icon-button { color: #f8f6ef; background: #ffffff12; flex: 0 0 auto; }
++.support-intro { color: #bfc1b7; margin: 20px 0; font-size: 13px; line-height: 1.55; }
++.support-panel details { border-top: 1px solid #ffffff1f; padding: 14px 0; }
++.support-panel summary { cursor: pointer; font-size: 13px; font-weight: 800; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
++.support-panel summary::-webkit-details-marker { display: none; }
++.support-panel details[open] summary svg { transform: rotate(180deg); }
++.support-panel details p { color: #bfc1b7; margin: 10px 0 0; font-size: 12px; line-height: 1.55; }
++.support-contact { color: var(--ink); background: var(--lime); border-radius: 15px; align-items: center; gap: 11px; margin-top: 4px; padding: 14px; display: flex; }
++.support-contact:hover { background: #e6ff78; }
++.support-contact div { flex: 1; display: grid; gap: 3px; }
++.support-contact strong { font-size: 11px; }
++.support-contact span { font-size: 10px; line-height: 1.35; }
+ .section-heading {
+   grid-template-columns: 0.55fr 1.25fr 0.8fr;
+   align-items: start;
+@@ -913,6 +1049,12 @@ footer > div {
+     left: 54%;
+     transform: translate(-50%, -20%) scale(0.78);
+   }
++  .rental-ready-card {
++    width: min(340px, calc(100vw - 40px));
++    right: 50%;
++    bottom: 5vh;
++    transform: translateX(50%);
++  }
+   .section-heading {
+     grid-template-columns: 1fr;
+     gap: 20px;
+@@ -1020,6 +1162,12 @@ footer > div {
+   .final-cta h2 {
+     font-size: 44px;
+   }
++  .rental-ready-card {
++    padding: 17px;
++    bottom: 3vh;
++  }
++  .rental-ready-card h3 { font-size: 22px; }
++  .support-fab { right: 14px; bottom: 14px; }
+ }
+ @media (prefers-reduced-motion: reduce) {
+   html {
+-- 
+2.39.5 (Apple Git-154)
+
