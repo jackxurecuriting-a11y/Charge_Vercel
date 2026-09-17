@@ -2,10 +2,15 @@ import {
   ArrowDown,
   ArrowRight,
   BatteryCharging,
+  ChevronDown,
+  CircleHelp,
   MapPin,
+  Phone,
   Sparkles,
+  X,
   Zap,
 } from "lucide-react";
+import { useState } from "react";
 import ChargeMachineStory from "./components/ChargeMachineStory";
 import StationLocator from "./components/StationLocator";
 
@@ -21,6 +26,8 @@ function Brand() {
 }
 
 export default function App() {
+  const [supportOpen, setSupportOpen] = useState(false);
+
   return (
     <main>
       <header className="site-header">
@@ -98,6 +105,59 @@ export default function App() {
       </section>
       <ChargeMachineStory />
       <StationLocator />
+
+      <button
+        aria-controls="charge-support"
+        aria-expanded={supportOpen}
+        className="support-fab"
+        onClick={() => setSupportOpen(true)}
+        type="button"
+      >
+        <CircleHelp size={19} /> Need help?
+      </button>
+
+      {supportOpen && (
+        <aside className="support-panel" id="charge-support" aria-label="Charge support">
+          <div className="support-panel-heading">
+            <div>
+              <p className="kicker">Charge support</p>
+              <h2>Here to keep you moving.</h2>
+            </div>
+            <button
+              aria-label="Close support panel"
+              className="icon-button"
+              onClick={() => setSupportOpen(false)}
+              type="button"
+            >
+              <X size={19} />
+            </button>
+          </div>
+          <p className="support-intro">
+            The UW pilot is still being planned. These are the answers we want
+            every Charge rider to have before launch.
+          </p>
+          <details open>
+            <summary>How do I rent a Charge bank? <ChevronDown size={17} /></summary>
+            <p>Walk up to a station, tap to start a rental, then take the bank that releases.</p>
+          </details>
+          <details>
+            <summary>Where can I return it? <ChevronDown size={17} /></summary>
+            <p>Return it to any Charge station. The planned UW locations are shown on the station map.</p>
+          </details>
+          <details>
+            <summary>What if a bank does not release? <ChevronDown size={17} /></summary>
+            <p>Do not pull on the station. Use the support contact listed at the station and keep your rental confirmation nearby.</p>
+          </details>
+          <a className="support-contact" href="tel:+12066818702">
+            <Phone size={18} />
+            <div>
+              <strong>Call Charge UW Support</strong>
+              <span>(206) 681-8702 · UW pilot questions and station help</span>
+            </div>
+            <ArrowRight size={18} />
+          </a>
+        </aside>
+      )}
     </main>
   );
 }

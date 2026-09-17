@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, CreditCard, LoaderCircle } from "lucide-react";
+import { Check, CreditCard, LoaderCircle, MapPin, X } from "lucide-react";
 
 const scenes = [
   {
@@ -29,6 +29,7 @@ const clamp = (value) => Math.min(1, Math.max(0, value));
 export default function ChargeMachineStory() {
   const sectionRef = useRef(null);
   const [progress, setProgress] = useState(0);
+  const [completionDismissed, setCompletionDismissed] = useState(false);
 
   useEffect(() => {
     let ticking = false;
@@ -64,6 +65,7 @@ export default function ChargeMachineStory() {
     "--load-progress": clamp((progress - 0.45) / 0.18),
     "--bank-progress": clamp((progress - 0.68) / 0.22),
   };
+  const showCompletion = progress > 0.83 && !completionDismissed;
 
   return (
     <section
@@ -131,6 +133,28 @@ export default function ChargeMachineStory() {
             <span className="release-flash" />
           </div>
         </div>
+        {showCompletion && (
+          <section className="rental-ready-card" aria-label="Demo rental ready">
+            <button
+              aria-label="Dismiss rental ready message"
+              className="rental-ready-close"
+              onClick={() => setCompletionDismissed(true)}
+              type="button"
+            >
+              <X size={16} />
+            </button>
+            <span className="rental-ready-icon"><Check size={18} /></span>
+            <div>
+              <p className="kicker">Ready to go</p>
+              <h3>Your Charge bank is ready.</h3>
+              <p>Grab it, power up, and return it to any Charge station when you’re done.</p>
+            </div>
+            <a href="#stations" onClick={() => setCompletionDismissed(true)}>
+              <MapPin size={15} /> Find return stations
+            </a>
+            <small>Demo experience — no rental started.</small>
+          </section>
+        )}
       </div>
     </section>
   );

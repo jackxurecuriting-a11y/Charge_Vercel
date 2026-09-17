@@ -546,6 +546,142 @@ em {
   top: 15px;
   left: 50%;
 }
+.rental-ready-card {
+  z-index: 20;
+  color: #f8f6ef;
+  background: #12130ff2;
+  border: 1px solid #d7ff3f75;
+  border-radius: 20px;
+  width: min(360px, calc(100vw - 40px));
+  padding: 20px;
+  position: absolute;
+  right: 5vw;
+  bottom: 7vh;
+  box-shadow: 0 24px 65px #12130f66;
+  animation: rental-ready-in 340ms cubic-bezier(.2,.8,.2,1) both;
+}
+.rental-ready-icon {
+  color: var(--ink);
+  background: var(--lime);
+  border-radius: 50%;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 14px;
+  display: grid;
+}
+.rental-ready-card .kicker {
+  color: var(--lime);
+  margin-bottom: 7px;
+}
+.rental-ready-card h3 {
+  letter-spacing: -0.045em;
+  margin: 0 0 9px;
+  font-size: 26px;
+  line-height: 0.98;
+}
+.rental-ready-card p:not(.kicker) {
+  color: #e7e7dd;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.rental-ready-card a {
+  color: var(--ink);
+  background: var(--lime);
+  border-radius: 999px;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 16px;
+  padding: 11px 13px;
+  font-size: 11px;
+  font-weight: 900;
+  display: flex;
+}
+.rental-ready-card small {
+  color: #a8aaa0;
+  margin-top: 13px;
+  font-size: 9px;
+  display: block;
+}
+.rental-ready-close,
+.icon-button {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  cursor: pointer;
+}
+.rental-ready-close {
+  color: #f8f6ef;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+@keyframes rental-ready-in {
+  from { opacity: 0; transform: translateY(18px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.support-fab {
+  z-index: 30;
+  color: #f8f6ef;
+  background: var(--ink);
+  border: 1px solid #ffffff2e;
+  border-radius: 999px;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 17px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  display: flex;
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  box-shadow: 0 12px 28px #12130f45;
+  cursor: pointer;
+}
+.support-fab:hover { background: #2a2b25; }
+.support-panel {
+  z-index: 40;
+  color: #f8f6ef;
+  background: #12130f;
+  border: 1px solid #ffffff24;
+  border-radius: 22px;
+  width: min(440px, calc(100vw - 32px));
+  padding: 24px;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  box-shadow: 0 28px 80px #12130f80;
+  animation: rental-ready-in 240ms ease-out both;
+}
+.support-panel-heading {
+  justify-content: space-between;
+  align-items: start;
+  gap: 16px;
+  display: flex;
+}
+.support-panel .kicker { color: var(--lime); margin-bottom: 8px; }
+.support-panel h2 { letter-spacing: -0.05em; margin: 0; font-size: 31px; line-height: 1; }
+.icon-button { color: #f8f6ef; background: #ffffff12; flex: 0 0 auto; }
+.support-intro { color: #bfc1b7; margin: 20px 0; font-size: 13px; line-height: 1.55; }
+.support-panel details { border-top: 1px solid #ffffff1f; padding: 14px 0; }
+.support-panel summary { cursor: pointer; font-size: 13px; font-weight: 800; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.support-panel summary::-webkit-details-marker { display: none; }
+.support-panel details[open] summary svg { transform: rotate(180deg); }
+.support-panel details p { color: #bfc1b7; margin: 10px 0 0; font-size: 12px; line-height: 1.55; }
+.support-contact { color: var(--ink); background: var(--lime); border-radius: 15px; align-items: center; gap: 11px; margin-top: 4px; padding: 14px; display: flex; }
+.support-contact:hover { background: #e6ff78; }
+.support-contact div { flex: 1; display: grid; gap: 3px; }
+.support-contact strong { font-size: 11px; }
+.support-contact span { font-size: 10px; line-height: 1.35; }
 .section-heading {
   grid-template-columns: 0.55fr 1.25fr 0.8fr;
   align-items: start;
@@ -913,6 +1049,12 @@ footer > div {
     left: 54%;
     transform: translate(-50%, -20%) scale(0.78);
   }
+  .rental-ready-card {
+    width: min(340px, calc(100vw - 40px));
+    right: 50%;
+    bottom: 5vh;
+    transform: translateX(50%);
+  }
   .section-heading {
     grid-template-columns: 1fr;
     gap: 20px;
@@ -1020,6 +1162,12 @@ footer > div {
   .final-cta h2 {
     font-size: 44px;
   }
+  .rental-ready-card {
+    padding: 17px;
+    bottom: 3vh;
+  }
+  .rental-ready-card h3 { font-size: 22px; }
+  .support-fab { right: 14px; bottom: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html {
