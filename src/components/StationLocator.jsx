@@ -1,227 +1,380 @@
-import { useEffect, useMemo, useState } from "react";
-import L from "leaflet";
 import {
-  MapContainer,
-  Marker,
-  Popup,
-  TileLayer,
-  useMap,
-} from "react-leaflet";
-import { ArrowUpRight, LocateFixed, MapPin } from "lucide-react";
-import "leaflet/dist/leaflet.css";
+  Component,
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  LocateFixed,
+  Search,
+  X,
+  MapPin,
+  List,
+  Map as MapIcon,
+  Clock,
+  Info,
+} from "lucide-react";
+import {
+  stations,
+  findStations,
+  formatDistance,
+  directionsUrl,
+} from "../data/stations";
+const StationMap = lazy(() => import("./StationMap"));
 
-const stations = [
-  {
-    id: "paccar",
-    name: "PACCAR Hall",
-    detail: "Foster School of Business",
-    position: [47.6591372, -122.3086277],
-  },
-  {
-    id: "dempsey",
-    name: "Dempsey Hall",
-    detail: "Foster School of Business",
-    position: [47.6591637, -122.3077418],
-  },
-  {
-    id: "founders",
-    name: "Founders Hall",
-    detail: "Foster School of Business",
-    position: [47.6588307, -122.3070886],
-  },
-  {
-    id: "golf-range",
-    name: "UW Golf Driving Range",
-    detail: "2800 NE Clark Road",
-    position: [47.6587984, -122.2972357],
-  },
-];
-
-const stationIcon = L.divIcon({
-  className: "charge-marker-shell",
-  html: '<span class="charge-marker" aria-hidden="true">C</span>',
-  iconAnchor: [22, 44],
-  iconSize: [44, 44],
-  popupAnchor: [0, -42],
-});
-
-const userIcon = L.divIcon({
-  className: "user-marker-shell",
-  html: '<span class="user-marker" aria-hidden="true"></span>',
-  iconAnchor: [10, 10],
-  iconSize: [20, 20],
-});
-
-function milesBetween([lat1, lon1], [lat2, lon2]) {
-  const toRadians = (degrees) => (degrees * Math.PI) / 180;
-  const earthRadiusMiles = 3958.8;
-  const latitudeDelta = toRadians(lat2 - lat1);
-  const longitudeDelta = toRadians(lon2 - lon1);
-  const a =
-    Math.sin(latitudeDelta / 2) ** 2 +
-    Math.cos(toRadians(lat1)) *
-      Math.cos(toRadians(lat2)) *
-      Math.sin(longitudeDelta / 2) ** 2;
-  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function MapViewUpdater({ position, zoom = 17 }) {
-  const map = useMap();
-
-  useEffect(() => {
-    map.flyTo(position, zoom, { duration: 0.8 });
-  }, [map, position, zoom]);
-
-  return null;
-}
-
-export default function StationLocator() {
-  const [selectedId, setSelectedId] = useState(null);
-  const [userPosition, setUserPosition] = useState(null);
-  const [locationMessage, setLocationMessage] = useState("");
-  const selectedStation = stations.find(({ id }) => id === selectedId);
-
-  const stationDistances = useMemo(() => {
-    if (!userPosition) return {};
-    return Object.fromEntries(
-      stations.map((station) => [
-        station.id,
-        milesBetween(userPosition, station.position),
-      ]),
+class MapBoundary extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <div className="map-placeholder">
+        The map couldn’t load. Use the location list and directions below.
+      </div>
+    ) : (
+      this.props.children
     );
-  }, [userPosition]);
+  }
+}
 
-  const findNearestStation = () => {
+export default function StationLocator({ onHelp }) {
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [location, setLocation] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [message, setMessage] = useState("");
+  const [view, setView] = useState("list");
+  const [reset, setReset] = useState(0);
+  const [tileError, setTileError] = useState(false);
+  const [offline, setOffline] = useState(!navigator.onLine);
+  const request = useRef(0);
+  const detail = useRef(null);
+  const results = useMemo(
+    () => findStations(query, location),
+    [query, location],
+  );
+  const station = results.find((s) => s.id === selected);
+  useEffect(() => {
+    if (selected && window.matchMedia("(max-width: 700px)").matches) {
+      detail.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
+      detail.current?.focus({ preventScroll: true });
+    }
+  }, [selected]);
+  useEffect(() => {
+    const update = () => setOffline(!navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+      request.current++;
+    };
+  }, []);
+  const select = (id) => {
+    setSelected(id);
+  };
+  const locate = () => {
     if (!navigator.geolocation) {
-      setLocationMessage("Location services are not available on this device.");
+      setMessage(
+        "Location isn’t supported here. Search a building or browse the list.",
+      );
       return;
     }
-
-    setLocationMessage("Finding your nearest station…");
+    const token = ++request.current;
+    setLocating(true);
+    setMessage("Finding your location…");
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const nextPosition = [coords.latitude, coords.longitude];
-        const nearest = stations.reduce((closest, station) =>
-          milesBetween(nextPosition, station.position) <
-          milesBetween(nextPosition, closest.position)
-            ? station
-            : closest,
-        );
-        setUserPosition(nextPosition);
-        setSelectedId(nearest.id);
-        setLocationMessage(`${nearest.name} is the closest planned station.`);
-      },
-      () => {
-        setLocationMessage(
-          "We could not access your location. Choose a station from the list instead.",
+        if (token !== request.current) return;
+        const position = [coords.latitude, coords.longitude];
+        const nearest = findStations("", position)[0];
+        setLocation(position);
+        setQuery("");
+        setSelected(nearest.id);
+        setLocating(false);
+        setMessage(
+          nearest.distance > 15000
+            ? "You appear to be outside the UW area. These are planned Seattle campus locations."
+            : `Closest planned building: ${nearest.name}. No active returns are confirmed.`,
         );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+      (error) => {
+        if (token !== request.current) return;
+        setLocating(false);
+        setMessage(
+          error.code === 1
+            ? "Location permission is off. Search or choose a building below."
+            : "Your location couldn’t be found. Try again or browse the buildings below.",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   };
-
   return (
-    <section className="station-locator" id="stations">
-      <div className="locator-heading">
+    <section className="locator-page" aria-labelledby="locator-title">
+      <div className="locator-title-row">
         <div>
-          <p className="kicker">UW launch network · 4 planned stations</p>
-          <h2>
-            Find your nearest
-            <br />
-            <em>return point.</em>
-          </h2>
-        </div>
-        <div className="locator-intro">
+          <p className="eyebrow">
+            <MapPin size={14} /> University of Washington · Seattle
+          </p>
+          <h1 id="locator-title">
+            A little power.
+            <br className="mobile-only" /> <em>Closer to you.</em>
+          </h1>
           <p>
-            Return your charger at any Charge station. Select a location to
-            see it on the map or use your current location to find the closest
-            one.
+            Explore our planned locations. Find the building that fits your day.
           </p>
-          <button className="locate-button" type="button" onClick={findNearestStation}>
-            <LocateFixed size={18} /> Use my location
+        </div>
+        <span className="network-count">
+          {String(stations.length).padStart(2, "0")}
+          <span>planned locations</span>
+        </span>
+      </div>
+      <div className="pilot-banner">
+        <Info size={19} />
+        <p>
+          <strong>The UW network is coming.</strong> These locations are
+          planned. Rentals and returns are not yet confirmed here.
+        </p>
+      </div>
+      <div className="locator-tools">
+        <div className="search-field">
+          <Search size={19} />
+          <label className="sr-only" htmlFor="station-search">
+            Search buildings or addresses
+          </label>
+          <input
+            id="station-search"
+            placeholder="Search a building or address"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelected(null);
+            }}
+          />
+          {query && (
+            <button
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("");
+                setSelected(null);
+              }}
+            >
+              <X size={17} />
+            </button>
+          )}
+        </div>
+        <button
+          className="button dark locate"
+          disabled={locating}
+          onClick={locate}
+        >
+          <LocateFixed size={17} />
+          {locating ? "Locating…" : "Use my location"}
+        </button>
+        <div className="view-switch" aria-label="Choose a station view">
+          <button
+            aria-pressed={view === "list"}
+            onClick={() => setView("list")}
+          >
+            <List size={17} /> List
           </button>
-          <p className="location-message" aria-live="polite">
-            {locationMessage}
-          </p>
+          <button aria-pressed={view === "map"} onClick={() => setView("map")}>
+            <MapIcon size={17} /> Map
+          </button>
         </div>
       </div>
-
-      <div className="locator-layout">
-        <div className="station-list" aria-label="Charge station locations">
-          {stations.map((station, index) => {
-            const distance = stationDistances[station.id];
-            const isSelected = station.id === selectedId;
-            return (
-              <button
-                className={`station-card${isSelected ? " selected" : ""}`}
-                key={station.id}
-                onClick={() => setSelectedId(station.id)}
-                type="button"
-              >
-                <span className="station-number">0{index + 1}</span>
-                <span className="station-card-copy">
-                  <strong>{station.name}</strong>
-                  <small>{station.detail}</small>
-                </span>
-                <span className="station-meta">
-                  <span>Planned</span>
-                  {distance !== undefined && <small>{distance.toFixed(2)} mi</small>}
-                </span>
-              </button>
-            );
-          })}
-
-          <div className="supplier-qr-card">
-            <img src="/charge-uw-stations-qr.svg" alt="QR code for the Charge UW station map" />
-            <div>
-              <strong>Save the station map</strong>
-              <p>Scan once. Return here whenever you need a Charge station.</p>
-              <a href="/charge-uw-stations-qr.png" download>
-                Download print QR <ArrowUpRight size={14} />
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div className="map-frame">
-          <MapContainer
-            center={[47.659, -122.3035]}
-            zoom={15}
-            scrollWheelZoom
-            aria-label="Interactive map of Charge stations at the University of Washington"
+      <div className="locator-meta">
+        <p role="status">
+          {message ||
+            "No signup needed. Location is optional and stays in this page’s memory."}
+        </p>
+        {location && (
+          <button
+            className="small-link"
+            onClick={() => {
+              request.current++;
+              setLocation(null);
+              setMessage("Your location has been cleared.");
+            }}
           >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {stations.map((station) => (
-              <Marker
-                eventHandlers={{ click: () => setSelectedId(station.id) }}
-                icon={stationIcon}
-                key={station.id}
-                position={station.position}
-              >
-                <Popup>
-                  <strong>{station.name}</strong>
-                  <span>{station.detail}</span>
-                  <span>Planned Charge station</span>
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${station.position.join(",")}`}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Get directions <ArrowUpRight size={13} />
-                  </a>
-                </Popup>
-              </Marker>
-            ))}
-            {userPosition && <Marker icon={userIcon} position={userPosition} />}
-            {selectedStation && <MapViewUpdater position={selectedStation.position} />}
-          </MapContainer>
-          <div className="map-key">
-            <MapPin size={14} /> University of Washington · Seattle
-          </div>
+            Clear my location
+          </button>
+        )}
+      </div>
+      {(offline || tileError) && (
+        <div className="map-warning" role="status">
+          {offline ? "You’re offline." : "Some map tiles couldn’t load."} You
+          can still search the location list. Directions need a connection.
         </div>
+      )}
+      <div className={`explorer view-${view}`}>
+        <div className="results-panel">
+          <div className="results-heading">
+            <span aria-live="polite">
+              {results.length} {results.length === 1 ? "location" : "locations"}
+              {location ? " · nearest first" : ""}
+            </span>
+            <button
+              className="small-link"
+              onClick={() => {
+                setQuery("");
+                setSelected(null);
+                setReset(reset + 1);
+              }}
+            >
+              Show all
+            </button>
+          </div>
+          {results.length === 0 ? (
+            <div className="empty-state">
+              <Search size={28} />
+              <h2>No locations found</h2>
+              <p>Try PACCAR, Dempsey, Founders, or Golf.</p>
+              <button className="button dark" onClick={() => setQuery("")}>
+                Show all locations
+              </button>
+            </div>
+          ) : (
+            <ul className="station-list">
+              {results.map((s) => (
+                <li key={s.id}>
+                  <button
+                    className={`station-card ${selected === s.id ? "selected" : ""}`}
+                    onClick={() => select(s.id)}
+                    aria-pressed={selected === s.id}
+                    aria-controls="station-details"
+                  >
+                    <span className="station-icon">
+                      <MapPin size={20} />
+                    </span>
+                    <span className="station-card-copy">
+                      <strong>{s.name}</strong>
+                      <span>{s.area}</span>
+                      <span className="status-line">
+                        <span className="status">Planned</span>
+                        {s.distance !== null && (
+                          <span>{formatDistance(s.distance)} away</span>
+                        )}
+                      </span>
+                    </span>
+                    <ArrowRight size={17} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="list-footnote">
+            {location
+              ? "Distances are straight-line estimates, not walking distances. "
+              : ""}
+            Pins identify buildings. Exact station placement is pending.
+          </p>
+        </div>
+        <div className="map-panel">
+          <MapBoundary>
+            <Suspense
+              fallback={
+                <div className="map-placeholder">Loading the campus map…</div>
+              }
+            >
+              <StationMap
+                items={results}
+                selected={station?.id}
+                onSelect={select}
+                location={location}
+                reset={reset}
+                onTileError={() => setTileError(true)}
+              />
+            </Suspense>
+          </MapBoundary>
+          <span className="map-label">UW · Seattle</span>
+        </div>
+        <section
+          className={`station-detail ${station ? "has-selection" : ""}`}
+          id="station-details"
+          ref={detail}
+          tabIndex={-1}
+          aria-live="polite"
+          aria-label="Selected location details"
+        >
+          {station ? (
+            <>
+              <div className="detail-title">
+                <div>
+                  <span className="status">Planned location</span>
+                  <h2>{station.name}</h2>
+                  <p>{station.address}</p>
+                </div>
+                <button
+                  className="icon-button"
+                  aria-label="Close location details"
+                  onClick={() => setSelected(null)}
+                >
+                  <X size={19} />
+                </button>
+              </div>
+              <div className="detail-facts">
+                <div>
+                  <MapPin size={18} />
+                  <p>
+                    <strong>Inside the building</strong>
+                    <span>
+                      {station.indoor ||
+                        "Exact floor and station placement to be confirmed."}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <Clock size={18} />
+                  <p>
+                    <strong>Access & returns</strong>
+                    <span>
+                      {station.hours ||
+                        "Hours and return availability are not yet confirmed."}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <a
+                className="button primary"
+                href={directionsUrl(station)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Directions to building <ArrowUpRight size={18} />
+              </a>
+              <p className="detail-note">
+                Opens Google Maps. This is not an active return-point
+                confirmation.
+              </p>
+            </>
+          ) : (
+            <div className="selection-prompt">
+              <MapPin size={24} />
+              <h2>Choose a location</h2>
+              <p>
+                Tap a building in the list or on the map for details and walking
+                directions.
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+      <div className="locator-bottom">
+        <p>
+          <strong>Returning a device right now?</strong> Follow the instructions
+          on your station or receipt. This map cannot verify a return.
+        </p>
+        <button className="text-link" onClick={onHelp}>
+          Get help <ArrowUpRight size={17} />
+        </button>
       </div>
     </section>
   );

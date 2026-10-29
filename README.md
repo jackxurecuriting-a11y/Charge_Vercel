@@ -1,26 +1,35 @@
-# Charge marketing site
+# Charge campus site
 
-Editable React/Vite source for the Charge shared-power-bank marketing demo.
+React/Vite marketing site and planned UW station explorer. Production: https://charge-campus.vercel.app
 
 ## Run locally
 
 ```bash
 npm install
 npm run dev
+npm test
+npm run build
 ```
 
 ## Deploy to Vercel
 
-1. Unzip this folder and push it to a GitHub repository, or import the folder with the Vercel CLI.
-2. In Vercel, choose **Add New → Project**, then import the repository.
-3. Vercel will detect Vite automatically. No environment variables are required.
-4. Deploy. Future GitHub pushes will automatically create new Vercel deployments.
+Use the existing Vercel `charge-campus` project. `vercel.json` configures the Vite build and `/stations` SPA rewrite. No app environment variables are required. Verify Git integration before relying on automatic deployment; a push alone is not proof of deployment. For an authenticated linked checkout, use `vercel --prod` and verify its production URL.
 
 ## Where to edit
 
 - Main page copy and sections: `src/App.jsx`
-- Full-screen scroll animation: `src/components/ChargeMachineStory.jsx`
+- Station data: `src/data/stations.js`
+- Search, selection, and fallback states: `src/components/StationLocator.jsx`
+- Lazy-loaded Leaflet/OpenStreetMap map: `src/components/StationMap.jsx`
 - Colors and layout: `src/styles.css` (brand variables are at the top)
 - Images: `public/`
 
-This is a concept marketing demo. It does not include live payments, station data, pricing, or a rental backend.
+## Routes and honest states
+
+`/` introduces the planned borrowing loop. `/stations` provides search, map/list selection, and building directions. The existing printed QR destination `/#stations` automatically opens `/stations`. Preserve `public/charge-uw-stations-qr.*` and that destination.
+
+All four locations are planned. There is no hardware, inventory, rental, payment, or identity integration. Directions lead to buildings, not verified return slots. Pricing, indoor placement, hours, and support contacts need confirmation before launch. Do not claim successful rentals or returns without backend verification.
+
+Location permission is requested only after a click. Coordinates stay in page memory; distance ordering is approximate, not walking distance. External maps load tiles from OpenStreetMap. Google Maps direction links do not embed the user's coordinates. Search/list remain usable when map tiles fail. This is not an installable offline app.
+
+Before release: run tests/build; check phone/tablet/desktop layouts, search and empty recovery, map/list selection, help keyboard dismissal, location fallback, and the legacy QR route.
